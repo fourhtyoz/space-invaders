@@ -57,19 +57,44 @@ class Player(Ship):
         self.mask = pygame.mask.from_surface(self.ship_img) # creating a pixel=perfect hitbox
         self.max_health = health
 
+class Enemy(Ship):
+    # Color map
+    COLOR_MAP = {
+        "red": (RED_SPACE_SHIP, RED_LASER),
+        "green": (GREEN_SPACE_SHIP, GREEN_LASER),
+        "blue": (BLUE_SPACE_SHIP, BLUE_LASER),
+    }
+
+    def __init__(self, x, y, color, health=100):
+        super().__init__(x, y, health)
+        self.ship_img, self.laser_img = self.COLOR_MAP[color]
+        self.mask = pygame.mask.from_surface(self.ship_img)
+    
+    def move(self, vel):
+        self.y += vel
+
 
 # Main loop
 def main():
     run = True
     FPS = 60
-    level = 1
+    level = 0
     lives = 5
     player_vel = 10
     main_font = pygame.font.SysFont('comicsams', 50)
+    lost_font = pygame.font.SysFont('comicsans', 100)
+
+    # Enemies settings
+    enemies = []
+    wave_length = 5
+    enemy_vel = 5
 
     player = Player(100, 100)
 
     clock = pygame.time.Clock()
+
+    lost = False
+    lost_count = 0
 
     # Updating the window
     def redraw_window():
@@ -82,6 +107,14 @@ def main():
         WIN.blit(lives_label, (WIDTH - level_label.get_width() - 10, 10))
         
         player.draw(WIN)
+        
+        for enemy in enemies:
+            enemy.draw(WIN)
+
+        if lost:
+            lost_label = lost_font.render("YOU LOST", 1, (255, 255, 255))
+            WIN.blit(lost_label, (WIDTH/2 - lost_label.get_width()/2, HEIGHT/2 - lost_label.get_height()/2))
+
 
         pygame.display.update()
 
@@ -89,6 +122,23 @@ def main():
         # Setting FPS 
         clock.tick(FPS)
         redraw_window()
+
+        if lives <= 0 or player.health <= 0:
+            lost = True
+            lost_count += 1
+        
+        if lost:
+            if lost_count > FPS * 3: # 3 second timer
+                run = False
+            else:
+                continue
+
+        if len(enemies) == 0:
+            level += 1
+            wave_length += 5
+            for i in range(wave_length):
+                enemy = Enemy(random.randrange(50, WIDTH-50), random.randrange(-1500, -100), random.choice(["red", "blue", "green"]))
+                enemies.append(enemy)
 
         # Quitting the game
         for event in pygame.event.get():
@@ -104,5 +154,14 @@ def main():
             player.y -= player_vel
         if keys[pygame.K_s] and player.y + player_vel + player.get_height() < HEIGHT: # down
             player.y += player_vel
+
+        for enemy in enemies[:]:
+            enemy.move(enemy_vel)
+            if enemy.y + enemy.get_height() > HEIGHT:
+                lives -= 1
+                enemies.remove(enemy)
+
+        
+
 main()
                 
